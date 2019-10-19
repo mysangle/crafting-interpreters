@@ -45,10 +45,12 @@ class Lox {
         private fun run(source: String) {
             val scanner = Scanner(source)
             val tokens = scanner.scanTokens()
-
-            tokens.map {
-                println(it)
+            val expression = Parser(tokens).parse()
+            if (hadError) {
+                return
             }
+
+            println(AstPrinter().print(expression!!))
         }
 
         /**
@@ -57,6 +59,14 @@ class Lox {
          */
         fun error(line: Int, message: String) {
             report(line, "", message)
+        }
+
+        fun error(token: Token, message: String) {
+            if (token.type == TokenType.EOF) {
+                report(token.line, " at end", message)
+            } else {
+                report(token.line, " at '${token.lexeme}'", message)
+            }
         }
 
         private fun report(line: Int, where: String, message: String) {
