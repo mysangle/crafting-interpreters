@@ -50,15 +50,12 @@ class Lox {
         private fun run(source: String) {
             val scanner = Scanner(source)
             val tokens = scanner.scanTokens()
-            val expression = Parser(tokens).parse()
+            val statements = Parser(tokens).parse()
             if (hadError) {
                 return
             }
 
-            expression?.let {
-//                println(AstPrinter().print(it))
-                interpreter.interpret(it)
-            }
+            interpreter.interpret(statements)
         }
 
         /**

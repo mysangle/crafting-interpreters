@@ -1,15 +1,70 @@
 package com.twentyhours.craftinginterpreters.lox
 
-class Interpreter : Expr.Visitor<Any?> {
-    fun interpret(expression: Expr) {
+class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
+    private var environment = Environment()
+
+    fun interpret(statements: List<Stmt>) {
         try {
-            val value = evaluate(expression)
-            println(stringify(value))
+            for (statement in statements) {
+                execute(statement)
+            }
         } catch (error: RuntimeError) {
             Lox.runtimeError(error)
         }
     }
 
+    private fun evaluate(expr: Expr): Any? {
+        return expr.accept(this)
+    }
+
+    private fun execute(stmt: Stmt) {
+        stmt.accept(this)
+    }
+
+    private fun executeBlock(statements: List<Stmt>, environment: Environment) {
+        val previous = this.environment
+        try {
+            this.environment = environment
+
+            for (statement in statements) {
+                execute(statement)
+            }
+        } finally {
+            this.environment = previous
+        }
+    }
+
+    // Stmt.Visitor<T>
+    override fun visitExpressionStmt(stmt: Expression) {
+        evaluate(stmt.expression)
+    }
+
+    override fun visitPrintStmt(stmt: Print) {
+        val value = evaluate(stmt.expression)
+        println(stringify(value))
+    }
+
+    override fun visitVarStmt(stmt: Var) {
+        val value = if (stmt.initializer != null) {
+            evaluate(stmt.initializer)
+        } else {
+            null
+        }
+
+        environment.define(stmt.name.lexeme, value)
+    }
+
+    override fun visitAssignExpr(expr: Assign): Any? {
+        val value = evaluate(expr.value)
+        environment.assign(expr.name, value)
+        return value
+    }
+
+    override fun visitBlockStmt(stmt: Block) {
+        executeBlock(stmt.statements, Environment(environment))
+    }
+
+    // Expr.Visitor<T>
     override fun visitBinaryExpr(expr: Binary): Any? {
         val left = evaluate(expr.left)
         val right = evaluate(expr.right)
@@ -81,6 +136,10 @@ class Interpreter : Expr.Visitor<Any?> {
         }
     }
 
+    override fun visitVariableExpr(expr: Variable): Any? {
+        return environment.get(expr.name)
+    }
+
     @Throws(RuntimeError::class)
     private fun checkNumberOperand(operator: Token, operand: Any?) {
         if (operand is Double) {
@@ -95,10 +154,6 @@ class Interpreter : Expr.Visitor<Any?> {
             return
         }
         throw RuntimeError(operator, "Operands must be a numbers.")
-    }
-
-    private fun evaluate(expr: Expr): Any? {
-        return expr.accept(this)
     }
 
     private fun isTruthy(obj: Any?): Boolean {
