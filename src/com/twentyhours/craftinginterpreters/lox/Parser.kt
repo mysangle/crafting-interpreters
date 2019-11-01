@@ -10,16 +10,100 @@ class Parser(private val tokens: List<Token>) {
 
     private var current = 0
 
-    fun parse(): Expr? {
-        try {
-            return expression()
-        } catch (error: ParseError) {
-            return null
+    fun parse(): List<Stmt> {
+        val statements = mutableListOf<Stmt>()
+        while (!isAtEnd()) {
+            declaration()?.let {
+                statements.add(it)
+            }
         }
+
+        return statements
     }
 
     private fun expression(): Expr {
-        return equality()
+        return assignment()
+    }
+
+    private fun assignment(): Expr {
+        val expr = equality()
+
+        if (match(TokenType.EQUAL)) {
+            val equals = previous()
+            val value = assignment()
+
+            if (expr is Variable) {
+                val name = expr.name
+                return Assign(name, value)
+            }
+
+            error(equals, "Invalid assignment target.")
+        }
+
+        return expr
+    }
+
+    private fun declaration(): Stmt? {
+        return try {
+            if (match(TokenType.VAR)) {
+                varDeclaration()
+            } else {
+                statement()
+            }
+        } catch (error: ParseError) {
+            synchronize()
+            null
+        }
+    }
+
+    private fun statement(): Stmt {
+        if (match(TokenType.PRINT)) {
+            return printStatement()
+        }
+        if (match(TokenType.LEFT_BRACE)) {
+            return Block(block())
+        }
+
+        return expressionStatement()
+
+    }
+
+    private fun printStatement(): Stmt {
+        val value = expression()
+        consume(TokenType.SEMICOLON, "Expect ';' after value.")
+        return Print(value)
+    }
+
+    private fun varDeclaration(): Stmt {
+        val name = consume(TokenType.IDENTIFIER, "Expect variable name.")
+
+        val initializer: Expr? = if (match(TokenType.EQUAL)) {
+            expression()
+        } else {
+            null
+        }
+
+        consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
+        return Var(name, initializer)
+    }
+
+    private fun expressionStatement(): Stmt {
+        val expr = expression()
+        consume(TokenType.SEMICOLON, "Expect ';' after expression.")
+        return Expression(expr)
+    }
+
+    private fun block(): List<Stmt> {
+        val statements = mutableListOf<Stmt>()
+
+        while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
+            declaration()?.let {
+                statements.add(it)
+            }
+        }
+
+        consume(TokenType.RIGHT_BRACE, "Expect '}' after block.")
+        return statements
     }
 
     private fun equality(): Expr {
@@ -70,12 +154,14 @@ class Parser(private val tokens: List<Token>) {
         return expr
     }
 
-    private fun unary(): Expr = if (match(TokenType.BANG, TokenType.MINUS)) {
-        val operator = previous()
-        val right = unary()
-        Unary(operator, right)
-    } else {
-        primary()
+    private fun unary(): Expr {
+        return if (match(TokenType.BANG, TokenType.MINUS)) {
+            val operator = previous()
+            val right = unary()
+            Unary(operator, right)
+        } else {
+            primary()
+        }
     }
 
     @Throws(ParseError::class)
@@ -91,6 +177,9 @@ class Parser(private val tokens: List<Token>) {
         }
         if (match(TokenType.NUMBER, TokenType.STRING)) {
             return Literal(previous().literal)
+        }
+        if (match(TokenType.IDENTIFIER)) {
+            return Variable(previous())
         }
         if (match(TokenType.LEFT_PAREN)) {
             val expr = expression()
