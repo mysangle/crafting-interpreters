@@ -1,6 +1,7 @@
 package com.twentyhours.craftinginterpreters.lox
 
 import java.lang.RuntimeException
+import kotlin.math.exp
 
 /**
  * 토큰의 리스트를 받아서 처리
@@ -26,7 +27,7 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun assignment(): Expr {
-        val expr = equality()
+        val expr = or()
 
         if (match(TokenType.EQUAL)) {
             val equals = previous()
@@ -38,6 +39,30 @@ class Parser(private val tokens: List<Token>) {
             }
 
             error(equals, "Invalid assignment target.")
+        }
+
+        return expr
+    }
+
+    private fun or(): Expr {
+        var expr = and()
+
+        while (match(TokenType.OR)) {
+            val operator = previous()
+            val right = and()
+            expr = Logical(expr, operator, right)
+        }
+
+        return expr
+    }
+
+    private fun and(): Expr {
+        var expr = equality()
+
+        while (match(TokenType.AND)) {
+            val operator = previous()
+            val right = equality()
+            expr = Logical(expr, operator, right)
         }
 
         return expr
@@ -57,21 +82,112 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun statement(): Stmt {
+        if (match(TokenType.FOR)) {
+            return forStatement()
+        }
+        if (match(TokenType.IF)) {
+            return ifStatement()
+        }
         if (match(TokenType.PRINT)) {
             return printStatement()
+        }
+        if (match(TokenType.WHILE)) {
+            return whileStatement()
         }
         if (match(TokenType.LEFT_BRACE)) {
             return Block(block())
         }
 
         return expressionStatement()
+    }
 
+    /**
+     * translate'for' to 'while' - syntactic sugar
+     * : Block(initializer, While(condition, Block(body, increment))
+     *
+     * for (var i = 0; i < 10; i = i + 1) {
+     *   print i;
+     * }
+     * =>
+     * {
+     *   var i = 0; // initializer
+     *   while (i < 10) {
+     *     print i;
+     *     i = i + 1;  // increment
+     *   }
+     * }
+     *
+     */
+    private fun forStatement(): Stmt {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
+
+        val initializer = when {
+            match(TokenType.SEMICOLON) -> null
+            match(TokenType.VAR) -> varDeclaration()
+            else -> expressionStatement()
+        }
+
+        val condition = if (!check(TokenType.SEMICOLON)) {
+            expression()
+        } else {
+            null
+        }
+        consume(TokenType.SEMICOLON, "Expect ';' after loop condition.")
+
+        val increment = if (!check(TokenType.RIGHT_PAREN)) {
+            expression()
+        } else {
+            null
+        }
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.")
+
+        var body = if (increment != null) {
+            Block(listOf(statement(), Expression(increment)))
+        } else {
+            statement()
+        }
+
+        body = if (condition == null) {
+            While(Literal(true), body)
+        } else {
+            While(condition, body)
+        }
+
+        return if (initializer != null) {
+            Block(listOf(initializer, body))
+        } else {
+            body
+        }
+    }
+
+    private fun ifStatement(): Stmt {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.")
+        val condition = expression()
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after if condition.")
+
+        val thenBranch = statement()
+        val elseBranch = if (match(TokenType.ELSE)) {
+            statement()
+        } else {
+            null
+        }
+
+        return If(condition, thenBranch, elseBranch)
     }
 
     private fun printStatement(): Stmt {
         val value = expression()
         consume(TokenType.SEMICOLON, "Expect ';' after value.")
         return Print(value)
+    }
+
+    private fun whileStatement(): Stmt {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.")
+        val condition = expression()
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
+        val body = statement()
+
+        return While(condition, body)
     }
 
     private fun varDeclaration(): Stmt {

@@ -1,6 +1,10 @@
 package com.twentyhours.craftinginterpreters.lox
 
 class AstPrinter : Expr.Visitor<String> {
+    override fun visitLogicalExpr(expr: Logical): String {
+        return parenthesize(expr.operator.lexeme, expr.left, expr.right)
+    }
+
     fun print(expr: Expr): String {
         return expr.accept(this)
     }
@@ -29,7 +33,7 @@ class AstPrinter : Expr.Visitor<String> {
     }
 
     override fun visitAssignExpr(expr: Assign): String {
-        return ""
+        return "[" + expr.name + " = " + expr.value + "]"
     }
 
     private fun parenthesize(name: String, vararg exprs: Expr): String {
