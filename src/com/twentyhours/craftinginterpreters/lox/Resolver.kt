@@ -5,7 +5,7 @@ import kotlin.collections.HashMap
 
 class Resolver(private val interpreter: Interpreter) : Expr.Visitor<Unit>, Stmt.Visitor<Unit> {
     private enum class FunctionType { NONE, FUNCTION, INITIALIZER, METHOD }
-    private enum class ClassType { NONE, CLASS }
+    private enum class ClassType { NONE, CLASS, SUBCLASS }
 
     private val scopes = Stack<HashMap<String, Boolean>>()
     private var currentFunction = FunctionType.NONE
@@ -115,6 +115,16 @@ class Resolver(private val interpreter: Interpreter) : Expr.Visitor<Unit>, Stmt.
         resolve(expr.obj)
     }
 
+    override fun visitSuperExpr(expr: Super) {
+        if (currentClass == ClassType.NONE) {
+            Lox.error(expr.keyword, "Cannot use 'super' outside of a class.")
+        } else if (currentClass != ClassType.SUBCLASS) {
+            Lox.error(expr.keyword, "Cannot use 'super' in a class with no superclass.")
+        }
+
+        resolveLocal(expr, expr.keyword)
+    }
+
     override fun visitThisExpr(expr: This) {
         if (currentClass == ClassType.NONE) {
             Lox.error(expr.keyword, "Cannot use 'this' outside of a class.")
@@ -150,6 +160,19 @@ class Resolver(private val interpreter: Interpreter) : Expr.Visitor<Unit>, Stmt.
         declare(stmt.name)
         define(stmt.name)
 
+        if (stmt.superclass != null &&
+                stmt.name.lexeme == stmt.superclass.name.lexeme) {
+            Lox.error(stmt.superclass.name, "A class cannot inherit from itself.")
+        }
+
+        stmt.superclass?.let {
+            currentClass = ClassType.SUBCLASS
+            resolve(it)
+
+            beginScope()
+            scopes.peek()["super"] = true
+        }
+
         beginScope()
         scopes.peek()["this"] = true
 
@@ -163,6 +186,10 @@ class Resolver(private val interpreter: Interpreter) : Expr.Visitor<Unit>, Stmt.
         }
 
         endScope()
+
+        stmt.superclass?.let {
+            endScope()
+        }
 
         currentClass = enclosingClass
     }

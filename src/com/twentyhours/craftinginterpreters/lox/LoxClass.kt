@@ -1,6 +1,10 @@
 package com.twentyhours.craftinginterpreters.lox
 
-class LoxClass(val name: String, private val methods: HashMap<String, LoxFunction>) : LoxCallable {
+class LoxClass(
+    val name: String,
+    val superclass: LoxClass?,
+    private val methods: HashMap<String, LoxFunction>
+) : LoxCallable {
     override fun arity(): Int {
         return findMethod("init")?.arity() ?: return 0
     }
@@ -16,6 +20,10 @@ class LoxClass(val name: String, private val methods: HashMap<String, LoxFunctio
     fun findMethod(name: String): LoxFunction? {
         if (methods.containsKey(name)) {
             return methods[name]!!
+        }
+
+        if (superclass != null) {
+            return superclass.findMethod(name)
         }
 
         return null

@@ -36,6 +36,10 @@ class AstPrinter : Expr.Visitor<String> {
         return "${expr.obj} ${expr.name.lexeme} ${expr.value}"
     }
 
+    override fun visitSuperExpr(expr: Super): String {
+        return "super"
+    }
+
     override fun visitThisExpr(expr: This): String {
         return "this"
     }
