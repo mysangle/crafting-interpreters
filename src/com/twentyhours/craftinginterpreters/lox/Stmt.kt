@@ -21,7 +21,7 @@ class Block(val statements: List<Stmt>) : Stmt() {
     }
 }
 
-class Class(val name: Token, val methods: List<Function>) : Stmt() {
+class Class(val name: Token, val superclass: Variable?, val methods: List<Function>) : Stmt() {
     override fun <R> accept(visitor: Visitor<R>): R {
         return visitor.visitClassStmt(this)
     }
