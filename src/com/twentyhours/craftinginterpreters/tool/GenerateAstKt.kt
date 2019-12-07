@@ -18,9 +18,12 @@ class GenerateAstKt {
                     "Assign   - val name: Token, val value: Expr",
                     "Binary   - val left: Expr, val operator: Token, val right: Expr",
                     "Call     - val callee: Expr, val paren: Token, val arguments: List<Expr>",
+                    "Get      - val obj: Expr, val name: Token",
                     "Grouping - val expression: Expr",
                     "Literal  - val value: Any?",
                     "Logical  - val left: Expr, val operator: Token, val right: Expr",
+                    "Set      - val obj: Expr, val name: Token, val value: Expr",
+                    "This     - val keyword: Token",
                     "Unary    - val operator: Token, val right: Expr",
                     "Variable - val name: Token"
                 )
@@ -29,6 +32,7 @@ class GenerateAstKt {
             defineAst(
                 args[0], "Stmt", listOf(
                     "Block      - val statements: List<Stmt>",
+                    "Class      - val name: Token, val methods: List<Function>",
                     "Expression - val expression: Expr",
                     "Function   - val name: Token, val params: List<Token>, val body: List<Stmt>",
                     "If         - val condition: Expr, val thenBranch: Stmt, val elseBranch: Stmt?",

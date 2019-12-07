@@ -1,10 +1,6 @@
 package com.twentyhours.craftinginterpreters.lox
 
 class AstPrinter : Expr.Visitor<String> {
-    override fun visitLogicalExpr(expr: Logical): String {
-        return parenthesize(expr.operator.lexeme, expr.left, expr.right)
-    }
-
     fun print(expr: Expr): String {
         return expr.accept(this)
     }
@@ -14,7 +10,11 @@ class AstPrinter : Expr.Visitor<String> {
     }
 
     override fun visitCallExpr(expr: Call): String {
-        return ""
+        return "${expr.callee} ${expr.arguments.size}"
+    }
+
+    override fun visitGetExpr(expr: Get): String {
+        return expr.name.lexeme
     }
 
     override fun visitGroupingExpr(expr: Grouping): String {
@@ -26,6 +26,18 @@ class AstPrinter : Expr.Visitor<String> {
             return "nil"
         }
         return expr.value.toString()
+    }
+
+    override fun visitLogicalExpr(expr: Logical): String {
+        return parenthesize(expr.operator.lexeme, expr.left, expr.right)
+    }
+
+    override fun visitSetExpr(expr: Set): String {
+        return "${expr.obj} ${expr.name.lexeme} ${expr.value}"
+    }
+
+    override fun visitThisExpr(expr: This): String {
+        return "this"
     }
 
     override fun visitUnaryExpr(expr: Unary): String {

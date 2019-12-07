@@ -35,7 +35,7 @@ class Environment(private val enclosing: Environment? = null) {
         throw RuntimeError(name, "Undefined variable '${name.lexeme}'.")
     }
 
-    fun assign(name:Token, value: Any?) {
+    fun assign(name: Token, value: Any?) {
         if (values.containsKey(name.lexeme)) {
             values[name.lexeme] = value
             return

@@ -54,12 +54,29 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
     }
 
     // Stmt.Visitor<T>
+    override fun visitBlockStmt(stmt: Block) {
+        executeBlock(stmt.statements, Environment(environment))
+    }
+
+    override fun visitClassStmt(stmt: Class) {
+        environment.define(stmt.name.lexeme, null)
+
+        val methods = HashMap<String, LoxFunction>()
+        stmt.methods.forEach {
+            val function = LoxFunction(it, environment, it.name.lexeme == "init")
+            methods[it.name.lexeme] = function
+        }
+
+        val klass = LoxClass(stmt.name.lexeme, methods)
+        environment.assign(stmt.name, klass)
+    }
+
     override fun visitExpressionStmt(stmt: Expression) {
         evaluate(stmt.expression)
     }
 
     override fun visitFunctionStmt(stmt: Function) {
-        val function = LoxFunction(stmt, environment)
+        val function = LoxFunction(stmt, environment, false)
         environment.define(stmt.name.lexeme, function)
     }
 
@@ -113,10 +130,6 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
         }
 
         return value
-    }
-
-    override fun visitBlockStmt(stmt: Block) {
-        executeBlock(stmt.statements, Environment(environment))
     }
 
     // Expr.Visitor<T>
@@ -179,6 +192,15 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
         return function.call(this, arguments)
     }
 
+    override fun visitGetExpr(expr: Get): Any? {
+        val obj = evaluate(expr.obj)
+        if (obj is LoxInstance) {
+            return obj.get(expr.name)
+        }
+
+        throw RuntimeError(expr.name, "Only instances have properties.")
+    }
+
     override fun visitGroupingExpr(expr: Grouping): Any? {
         return evaluate(expr.expression)
     }
@@ -202,6 +224,20 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
 
         return evaluate(expr.right)
     }
+
+    override fun visitSetExpr(expr: Set): Any? {
+        val obj = evaluate(expr.obj)
+
+        if (obj !is LoxInstance) {
+            throw RuntimeError(expr.name, "Only instances have fields.")
+        }
+
+        val value = evaluate(expr.value)
+        obj.set(expr.name, value)
+        return value
+    }
+
+    override fun visitThisExpr(expr: This): Any? = lookUpVariable(expr.keyword, expr)
 
     override fun visitUnaryExpr(expr: Unary): Any? {
         val right = evaluate(expr.right)
