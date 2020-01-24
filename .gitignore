@@ -2,4 +2,6 @@
 *.iml
 out/
 .DS_Store
+clox/*.o
+clox/clox
 
