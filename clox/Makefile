@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -W -Wall
+CFLAGS = -W -Wall -Wunused-parameter
 TARGET = clox
 OBJECTS = main.o chunk.o memory.o debug.o value.o vm.o compiler.o scanner.o object.o table.o
 
