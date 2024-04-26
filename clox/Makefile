@@ -8,6 +8,10 @@ all : $(TARGET)
 $(TARGET) : $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $^
 
+memory.o: memory.c memory.h common.h
+
+object.o: object.c object.h common.h
+
 clean :
 	rm *.o $(TARGET)
 
